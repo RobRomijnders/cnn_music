@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>CNN for music genres by RobRomijnders</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>CNN for music genres</h1>
+        <p>A CNN for music genre classification and TSC in general</p>
+
+        <p class="view"><a href="https://github.com/RobRomijnders/cnn_music">View the Project on GitHub <small>RobRomijnders/cnn_music</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/RobRomijnders/cnn_music/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/RobRomijnders/cnn_music/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/RobRomijnders/cnn_music">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h2>
+<a id="cnn-for-music-genres" class="anchor" href="#cnn-for-music-genres" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>CNN for music genres</h2>
+
+<p>This post presents a CNN for music genre classification. Over the last weeks, I got many positive reactions for my implementations of a <a href="http://robromijnders.github.io/CNN_tsc/">CNN</a> and <a href="http://robromijnders.github.io/LSTM_tsc/">LSTM</a> for time-series classification. With this post, we stretch the TSC domain to long signals. Music has a typical sample frequency of 44.1 kHz. For basic classification, you need at least 1 or 2 seconds of data. That implies a signal length of roughly 50.000 samples. This post implements a CNN with accuracies around 90%.</p>
+
+<h2>
+<a id="downsampling-architecture" class="anchor" href="#downsampling-architecture" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Downsampling architecture</h2>
+
+<p>The implementation downsamples in two stages. At first, <em>extract_music.m</em> loads the data and applies a hard-coded downsample with factor 30. The resulting sample frequency is 1470Hz. The second downsampling occurs after the first conv-layer in <em>CNN_music_main.py</em>. An immediate downsampling with factor 90 would discard useful information. The first conv-layer in the CNN graph can extract useful information. The strided max-pooling condenses information with a factor 3. With a combined convolution and max-pooling, we allow for valuable information to be passed to the second conv-layer</p>
+
+<h2>
+<a id="your-own-use" class="anchor" href="#your-own-use" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Your own use</h2>
+
+<p>The goal is to show that even long sparse signals, like music, also allow for time-series classification. In this project, the MATLAB code in <em>extract_music.m</em> extract chunks of signal from the music in a specific directory. You can cut down the project at every layer for your own use</p>
+
+<ul>
+<li>At the base level, you can import your own music.</li>
+<li>In the MATLAB code, there's many knobs to play with
+
+<ul>
+<li>The chunk-length</li>
+<li>The down-sample factor</li>
+<li>For better performance, you can synchronize the chunks with the beat of the music</li>
+</ul>
+</li>
+<li>You can discard the chunking all together and feed the music at original sample frequency to the CNN.</li>
+<li>At last, the CNN allows for many tuning, like the architecture, learning rate, number of neurons, regularization, dropout and so on.</li>
+</ul>
+
+<h2>
+<a id="output" class="anchor" href="#output" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Output</h2>
+
+<p>With the implementation set in the <em>.py</em> file, you can expect these outputs:
+The evolution of the loss-function and the accuracies.
+<img src="https://github.com/RobRomijnders/cnn_music/blob/master/loss_acc_evol.png?raw=true" alt="Loss_acc">
+The graph in TensorBoard
+<img src="https://github.com/RobRomijnders/cnn_music/blob/master/tensorboard.png?raw=true" alt="graph"></p>
+
+<p>As always, I am curious to any comments and questions. Reach me at <a href="mailto:romijndersrob@gmail.com">romijndersrob@gmail.com</a></p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/RobRomijnders">RobRomijnders</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
