@@ -9,9 +9,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import clip_ops
-from bn_class import *
+from bnf import *
 
-                            
+
 """Hyperparameters"""
 # The graph is build with conv-pool blocks. One list as below denotes the settings
 # for a conv-pool block as in [number_filters, kernel_size, pool_stride]
@@ -97,37 +97,27 @@ with tf.name_scope('max_pool1') as scope:
     h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, filt_1[2], 1, 1],
                         strides=[1, filt_1[2], 1, 1], padding='VALID')
                         #width is now (128-4)/2+1
-    width_pool1 = int(np.floor((D-filt_1[2])/filt_1[2]))+1 
+    width_pool1 = int(np.floor((D-filt_1[2])/filt_1[2]))+1
     size1 = tf.shape(h_pool1)       #Debugging purposes
-    
-    
+
+
 with tf.name_scope("Conv2") as scope:
   W_conv2 = weight_variable([filt_2[1], 1, filt_1[0], filt_2[0]], 'Conv_Layer_2')
   b_conv2 = bias_variable([filt_2[0]], 'bias_for_Conv_Layer_2')
   a_conv2 = conv2d(h_pool1, W_conv2) + b_conv2
   h_conv2 = a_conv2
  # h_conv2 = tf.nn.relu(a_conv2) #ReLU after batchnorm
-  
+
 with tf.name_scope('max_pool2') as scope:
     h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, filt_2[2], 1, 1],
                         strides=[1, filt_2[2], 1, 1], padding='VALID')
                         #width is now (128-4)/2+1
-    width_pool2 = int(np.floor((width_pool1-filt_2[2])/filt_2[2]))+1 
+    width_pool2 = int(np.floor((width_pool1-filt_2[2])/filt_2[2]))+1
     size2 = tf.shape(h_pool2)       #Debugging purposes
-  
+
 with tf.name_scope('Batch_norm1') as scope:
-# ewma is the decay for which we update the moving average of the 
-# mean and variance in the batch-norm layers
-# The placeholder bn_train denotes wether we are in train or testtime. 
-# - In traintime, we update the mean and variance according to the statistics
-#    of the batch
-#  - In testtime, we use the moving average of the mean and variance. We do NOT
-#     update 
-    ewma = tf.train.ExponentialMovingAverage(decay=0.99)                  
-    bn_conv1 = ConvolutionalBatchNormalizer(filt_2[0], 0.001, ewma, True)           
-    update_assignments = bn_conv1.get_assigner() 
-    a_bn1 = bn_conv1.normalize(h_pool2, train=bn_train) 
-    h_bn1 = tf.nn.relu(a_bn1) 
+    a_bn1 = batch_norm(h_pool2,filt_2[0],bn_train,'bn2')
+    h_bn1 = tf.nn.relu(a_bn1)
 
 
 with tf.name_scope("Fully_Connected1") as scope:
@@ -140,8 +130,8 @@ with tf.name_scope("Fully_Connected1") as scope:
   h_flat = tf.reshape(h_bn1, [-1, width_pool2*filt_2[0]])
   h_flat = tf.nn.dropout(h_flat,keep_prob)
   h_fc1 = tf.nn.relu(tf.matmul(h_flat, W_fc1) + b_fc1)
- 
-  
+
+
 with tf.name_scope("Output_layer") as scope:
   h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
   W_fc2 = tf.Variable(tf.truncated_normal([num_fc_1, num_classes], stddev=0.1),name = 'W_fc2')
@@ -169,9 +159,9 @@ with tf.name_scope("train") as scope:
         grad_values = gradient.values
       else:
         grad_values = gradient
-      
-      numel +=tf.reduce_sum(tf.size(variable))  
-        
+
+      numel +=tf.reduce_sum(tf.size(variable))
+
       h1 = tf.histogram_summary(variable.name, variable)
       h2 = tf.histogram_summary(variable.name + "/gradients", grad_values)
       h3 = tf.histogram_summary(variable.name + "/gradient_norm", clip_ops.global_norm([grad_values]))
@@ -183,12 +173,12 @@ with tf.name_scope("Evaluating_accuracy") as scope:
 """ Note on argmax and softmax"""
 #In the two blocks of code above, we use softmax to generate a final disctribution.
 #We use argmax to evaluate the accuracy. Both functions are superfluous for the
-#binary case. However, we code in this way to allow for multiple labels in 
-#future implementations.  
-   
-   
+#binary case. However, we code in this way to allow for multiple labels in
+#future implementations.
 
-#Define one op to call all summaries    
+
+
+#Define one op to call all summaries
 merged = tf.merge_all_summaries()
 
 # For now, we collect performances in a Numpy array.
@@ -200,7 +190,7 @@ with tf.Session() as sess:
   writer = tf.train.SummaryWriter("/home/rob/Dropbox/ml_projects/music/log_tb", sess.graph_def)
 
   sess.run(tf.initialize_all_variables())
-  
+
   step = 0      # Step is a counter for filling the numpy array perf_collect
   for i in range(max_iterations):
     batch_ind = np.random.choice(N,batch_size,replace=False)
@@ -214,25 +204,25 @@ with tf.Session() as sess:
       result = sess.run([accuracy,cost],feed_dict = { x: X_train, y_: y_train, keep_prob: 1.0, bn_train : False})
       perf_collect[1,step] = result[0]
       perf_collect[3,step] = result[1]
-        
+
       #Check validation performance
       result = sess.run([accuracy,merged,cost], feed_dict={ x: X_val, y_: y_val, keep_prob: 1.0, bn_train : False})
       acc = result[0]
       perf_collect[0,step] = acc
       perf_collect[2,step] = result[2]
-      
+
       #Write information to TensorBoard
       summary_str = result[1]
       writer.add_summary(summary_str, i)
       writer.flush()  #Don't forget this command! It makes sure Python writes the summaries to the log-file
       print(" Validation accuracy at %s out of %s is %s" % (i,max_iterations, acc))
-      step +=1  
+      step +=1
     sess.run(train_step,feed_dict={x:X_train[batch_ind], y_: y_train[batch_ind], keep_prob: dropout, bn_train : True})
 
   result = sess.run([accuracy,numel], feed_dict={ x: X_test, y_: y_test, keep_prob: 1.0, bn_train : False})
   acc_test = result[0]
   print('The network has %s trainable parameters'%(result[1]))
-  
+
 """Additional plots"""
 print('The accuracy on the test data is %.3f, before training was %.3f' %(acc_test,acc_test_before))
 plt.figure()

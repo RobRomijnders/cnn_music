@@ -45,9 +45,8 @@ class ConvolutionalBatchNormalizer(object):
     """Returns an EWMA apply op that must be invoked after optimization."""
     return self.ewma_trainer.apply([self.mean, self.variance])
 
-  def normalize(self, x, train=True):
-    """Returns a batch-normalized version of x."""
-    if train:
+  def train_norm(self,x):
+      """Normalization code when training mode"""
       mean, variance = tf.nn.moments(x, [0,1,2])
       assign_mean = self.mean.assign(mean)
       assign_variance = self.variance.assign(variance)
@@ -55,7 +54,9 @@ class ConvolutionalBatchNormalizer(object):
         return tf.nn.batch_norm_with_global_normalization(
             x, mean, variance, self.beta, self.gamma,
             self.epsilon, self.scale_after_norm)
-    else:
+            
+  def test_norm(self,x):
+      """Normalization code when testing mode"""
       mean = self.ewma_trainer.average(self.mean)
       variance = self.ewma_trainer.average(self.variance)
       local_beta = tf.identity(self.beta)
@@ -63,3 +64,10 @@ class ConvolutionalBatchNormalizer(object):
       return tf.nn.batch_norm_with_global_normalization(
           x, mean, variance, local_beta, local_gamma,
           self.epsilon, self.scale_after_norm)
+
+  def normalize(self, x, train=True):
+    """Returns a batch-normalized version of x."""
+    act = tf.cond(train,lambda: self.train_norm(x),lambda: self.test_norm(x))
+    return act
+      
+  
